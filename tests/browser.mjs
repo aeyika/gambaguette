@@ -35,6 +35,13 @@ try {
   await page.locator('#gambaguette #settings-panel').waitFor({state:'visible'});
   assert.equal(await page.locator('#gambaguette #time').inputValue(),'100');
   console.log('PASS real bundled engine returns a legal hint in 100 ms search mode');
+  const beforeTheme = await page.locator('#gambaguette #status').innerText();
+  await page.locator('#gambaguette #dark-mode').check();
+  assert.equal(await page.locator('#gambaguette').getAttribute('data-theme'),'dark');
+  assert.equal(await page.locator('#gambaguette .card').evaluate(card => getComputedStyle(card).backgroundColor),'rgb(23, 27, 34)');
+  assert.equal(await arrow.isVisible(),true,'changing theme must preserve the current hint');
+  assert.equal(await page.locator('#gambaguette #status').innerText(),beforeTheme);
+  console.log('PASS dark mode updates panel and controls without restarting analysis');
   const initialPath = await arrow.locator('path').getAttribute('d');
   await page.locator('#gambaguette [aria-label="Blue arrow"]').click();
   assert.equal(await arrow.locator('path').getAttribute('fill'),'#65b9ff');
@@ -145,9 +152,10 @@ try {
   await page.reload();
   await arrow.waitFor({state:'visible'});
   assert.equal(await arrow.locator('path').getAttribute('fill'),'#65b9ff');
+  assert.equal(await page.locator('#gambaguette').getAttribute('data-theme'),'dark');
   console.log('PASS no-board cleanup, dynamic board mounting and colour persistence after reload');
   // Two tabs share one offscreen engine and must receive their own positions.
-  await worker.evaluate(() => chrome.storage.local.set({settings:{enabled:true,automatic:true,side:'both',autoSide:true,time:300,arrowColor:'#65b9ff'}}));
+  await worker.evaluate(() => chrome.storage.local.set({settings:{enabled:true,automatic:true,side:'both',autoSide:true,time:300,arrowColor:'#65b9ff',darkMode:true}}));
   const second = await context.newPage(), third = await context.newPage();
   await Promise.all([second.goto('https://www.chess.com/game/live/123?player=black&flip=true'),third.goto('https://www.chess.com/fr/play/computer')]);
   const secondPosition = new Chess(); secondPosition.move('c4');
@@ -187,9 +195,15 @@ try {
   const extensionId = new URL(worker.url()).host;
   const popup = await context.newPage();
   await popup.goto(`chrome-extension://${extensionId}/popup.html`);
+  await popup.waitForFunction(() => document.documentElement.dataset.theme === 'dark');
+  assert.equal(await popup.locator('body').evaluate(body => getComputedStyle(body).backgroundColor),'rgb(23, 27, 34)');
   await popup.locator('#arrow-color').evaluate(input => {input.value='#69e0a3';input.dispatchEvent(new Event('input',{bubbles:true}));});
   await second.waitForFunction(() => document.querySelector('#gambaguette-arrow path')?.getAttribute('fill') === '#69e0a3');
   await popup.screenshot({path:path.join(output,'popup.png')});
+  await popup.locator('#dark-mode').uncheck();
+  await second.waitForFunction(() => document.querySelector('#gambaguette')?.dataset.theme === 'light');
+  assert.equal(await second.locator('#gambaguette-arrow').isVisible(),true);
+  console.log('PASS saved theme persists across reload and synchronizes between popup and tabs');
   await popup.locator('#enabled').uncheck();
   await popup.locator('#status').filter({hasText:'Hints paused.'}).waitFor();
   console.log('PASS popup settings, live colour sync across tabs and storage permissions');

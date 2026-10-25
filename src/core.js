@@ -2,7 +2,7 @@ import { Chess, DEFAULT_POSITION, validateFen } from 'chess.js';
 export { Chess };
 
 export const SEARCH_TIMES = [100, 300, 800, 1500, 3000];
-export const DEFAULTS = { enabled: true, automatic: true, side: 'both', autoSide: true, time: 100, arrowColor: '#ffbe55' };
+export const DEFAULTS = { enabled: true, automatic: true, side: 'both', autoSide: true, time: 100, arrowColor: '#ffbe55', darkMode: false, privateOverlay: false };
 export function supportedUrl(url) {
   try {
     const u = new URL(url);
@@ -18,6 +18,8 @@ export function settings(value = {}) {
     autoSide: typeof value.autoSide === 'boolean' ? value.autoSide : DEFAULTS.autoSide,
     time: SEARCH_TIMES.includes(Number(value.time)) ? Number(value.time) : DEFAULTS.time,
     arrowColor: /^#[0-9a-f]{6}$/i.test(value.arrowColor) ? value.arrowColor.toLowerCase() : DEFAULTS.arrowColor,
+    darkMode: typeof value.darkMode === 'boolean' ? value.darkMode : DEFAULTS.darkMode,
+    privateOverlay: typeof value.privateOverlay === 'boolean' ? value.privateOverlay : DEFAULTS.privateOverlay,
   };
 }
 export function normalizeSide(value) {

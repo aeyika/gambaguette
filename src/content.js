@@ -1,6 +1,7 @@
 import { Chess, PositionTracker, settings, normalizeSide, arrowGeometry, legalSuggestion } from './core.js';
 import { findBoard, placementOf } from './board.js';
 import { icons } from 'gambaguette:icons';
+import themeCSS from './theme.css';
 
 const tracker = new PositionTracker();
 let prefs, board, panel, shadow, svg, arrowGroup, arrowShape, lastSnapshot = 0, fen = null;
@@ -16,6 +17,11 @@ function syncSettings() {
   if (!shadow) return;
   $('#side').value = effectiveSide() ?? 'both';
   $('#auto-side').checked = prefs.autoSide;
+  panel.dataset.theme = prefs.darkMode ? 'dark' : 'light';
+  $('#dark-mode').checked = prefs.darkMode;
+  $('#private-overlay').checked = prefs.privateOverlay;
+  if (prefs.privateOverlay) panel.style.setProperty('display','none','important');
+  else panel.style.removeProperty('display');
   $('#time').value = String(prefs.time); $('#automatic').checked = prefs.automatic;
   $('#arrow-color').value = prefs.arrowColor; $('#color-value').textContent = prefs.arrowColor.toUpperCase();
   for (const preset of shadow.querySelectorAll('[data-color]')) preset.setAttribute('aria-pressed',String(preset.dataset.color === prefs.arrowColor));
@@ -26,6 +32,7 @@ function syncSettings() {
 
 function setStatus(text) { if (shadow) $('#status').textContent = text; }
 function invalidate() {
+  if (prefs?.privateOverlay) chrome.runtime.sendMessage({target:'overlay',action:'hide'}).catch(() => {});
   if (pendingTicket !== null) {
     const obsolete = pendingTicket; pendingTicket = null;
     chrome.runtime.sendMessage({target:'background',type:'cancel',client,revision:obsolete}).catch(() => {});
@@ -40,16 +47,17 @@ function mount() {
   shadow = panel.attachShadow({mode:'open'});
   shadow.innerHTML = `
     <style>
-      :host{color-scheme:light}*{box-sizing:border-box}svg{display:block;flex-shrink:0}button,select,input{font:inherit}button{cursor:pointer}
-      .card{width:292px;max-width:calc(100vw - 24px);background:#fff;color:#26364a;border:1px solid #e5e9ef;border-radius:8px;box-shadow:0 10px 40px #10233d26,0 2px 6px #10233d0d;font:13px/1.45 system-ui,sans-serif;overflow:hidden}
-      header{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid #edf0f4;cursor:move;touch-action:none;user-select:none}.brand{display:flex;align-items:center;gap:9px;font-size:14px;letter-spacing:-.3px;font-weight:600}.brand svg{color:#174c7f}
-      button{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1px solid #e3e8ef;background:#fff;color:#5d6b7d;border-radius:5px;padding:8px 10px}button:hover{background:#f1f5f9}button:disabled{opacity:.45;cursor:default}button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid #2f74bc;outline-offset:2px}
-      .tools{display:flex;gap:2px}#fold,#settings-toggle{width:28px;height:28px;padding:5px;border-color:transparent}#settings-toggle[aria-expanded="true"]{background:#edf4fb;color:#174c7f}.body{max-height:calc(100vh - 100px);overflow-y:auto}
-      .summary{border-left:3px solid #174c7f;background:#f5f8fc;padding:13px 16px}.label{display:flex;align-items:center;justify-content:space-between;color:#174c7f;font-size:11px;font-weight:500}.label span:first-child{display:flex;align-items:center;gap:7px}.label svg{width:14px;height:14px}#side-badge{font-size:10px;color:#718297}
-      .result{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:4px 0}#move{font-size:30px;font-weight:600;letter-spacing:-.8px;color:#213d5e}#evaluation{font-size:12px;color:#64758a;font-variant-numeric:tabular-nums}#detail{font-size:12px;color:#6d7b8e;min-height:17px}#status{font-size:11px;color:#7b8798;margin:4px 0 0;min-height:16px}
-      #settings-panel{padding:0 16px 6px;border-bottom:1px solid #edf0f4}.row{display:flex;align-items:center;gap:8px;min-height:43px;border-bottom:1px solid #f0f2f5}.row:last-child{border-bottom:0}.row label{flex:1;display:flex;align-items:center;gap:9px;color:#526174}.row label svg{color:#8995a5;width:16px;height:16px}.toggle{justify-content:space-between;flex-direction:row-reverse}.toggle span{display:flex;align-items:center;gap:9px}
-      select{max-width:126px;color:#526174;background:#f8fafc;border:1px solid #e7ebf1;border-radius:4px;padding:5px 7px;font-size:12px;cursor:pointer}input{accent-color:#174c7f}input[type="checkbox"]{width:14px;height:14px;margin:0}.note{font-size:10px;color:#8b96a6;margin:4px 0 8px;padding-left:25px}.color-control{display:flex;align-items:center;gap:8px}input[type="color"]{width:28px;height:25px;border:1px solid #dce2ea;padding:2px;border-radius:4px;cursor:pointer;background:#fff}#color-value{font-size:10px;color:#8b96a6;font-family:ui-monospace,monospace}.swatches{display:flex;gap:9px;padding:7px 0 11px 25px;border-bottom:1px solid #f0f2f5}.swatch{width:20px;height:20px;padding:0;border:2px solid #fff;outline:1px solid #e1e6ed;border-radius:50%;background:var(--swatch)}.swatch:hover{background:var(--swatch);outline-color:#174c7f}.swatch[aria-pressed="true"]{outline:2px solid #174c7f}
-      .actions{display:flex;gap:8px;padding:12px 14px}.actions button{flex:1;font-size:12px}.actions svg{width:15px;height:15px}#hint{background:#174c7f;color:#fff;border-color:#174c7f}#hint:hover{background:#103c66}
+      ${themeCSS}
+      *{box-sizing:border-box}svg{display:block;flex-shrink:0}button,select,input{font:inherit}button{cursor:pointer}
+      .card{width:292px;max-width:calc(100vw - 24px);background:var(--gb-bg);color:var(--gb-title);border:1px solid var(--gb-outline);border-radius:8px;box-shadow:0 10px 40px #10233d26,0 2px 6px #10233d0d;font:13px/1.45 system-ui,sans-serif;overflow:hidden}
+      header{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--gb-border);cursor:move;touch-action:none;user-select:none}.brand{display:flex;align-items:center;gap:9px;font-size:14px;letter-spacing:-.3px;font-weight:600}.brand svg{color:var(--gb-accent)}
+      button{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1px solid var(--gb-outline);background:var(--gb-bg);color:var(--gb-text);border-radius:5px;padding:8px 10px}button:hover{background:var(--gb-hover)}button:disabled{opacity:.45;cursor:default}button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--gb-focus);outline-offset:2px}
+      .tools{display:flex;gap:2px}#fold,#settings-toggle{width:28px;height:28px;padding:5px;border-color:transparent}#settings-toggle[aria-expanded="true"]{background:var(--gb-selected);color:var(--gb-accent)}.body{max-height:calc(100vh - 100px);overflow-y:auto}
+      .summary{border-left:3px solid var(--gb-accent);background:var(--gb-selected);padding:13px 16px}.label{display:flex;align-items:center;justify-content:space-between;color:var(--gb-accent);font-size:11px;font-weight:500}.label span:first-child{display:flex;align-items:center;gap:7px}.label svg{width:14px;height:14px}#side-badge{font-size:10px;color:var(--gb-muted)}
+      .result{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:4px 0}#move{font-size:30px;font-weight:600;letter-spacing:-.8px;color:var(--gb-title)}#evaluation{font-size:12px;color:var(--gb-muted);font-variant-numeric:tabular-nums}#detail{font-size:12px;color:var(--gb-muted);min-height:17px}#status{font-size:11px;color:var(--gb-muted);margin:4px 0 0;min-height:16px}
+      #settings-panel{padding:0 16px 6px;border-bottom:1px solid var(--gb-border)}.row{display:flex;align-items:center;gap:8px;min-height:43px;border-bottom:1px solid var(--gb-border)}.row:last-child{border-bottom:0}.row label{flex:1;display:flex;align-items:center;gap:9px;color:var(--gb-text)}.row label svg{color:var(--gb-muted);width:16px;height:16px}.toggle{justify-content:space-between;flex-direction:row-reverse}.toggle span{display:flex;align-items:center;gap:9px}
+      select{max-width:126px;color:var(--gb-text);background:var(--gb-field);border:1px solid var(--gb-outline);border-radius:4px;padding:5px 7px;font-size:12px;cursor:pointer}input{accent-color:var(--gb-accent)}input[type="checkbox"]{width:14px;height:14px;margin:0}.note{font-size:10px;color:var(--gb-muted);margin:4px 0 8px;padding-left:25px}.color-control{display:flex;align-items:center;gap:8px}input[type="color"]{width:28px;height:25px;border:1px solid var(--gb-outline);padding:2px;border-radius:4px;cursor:pointer;background:var(--gb-bg)}#color-value{font-size:10px;color:var(--gb-muted);font-family:ui-monospace,monospace}.swatches{display:flex;gap:9px;padding:7px 0 11px 25px;border-bottom:1px solid var(--gb-border)}.swatch{width:20px;height:20px;padding:0;border:2px solid var(--gb-bg);outline:1px solid var(--gb-outline);border-radius:50%;background:var(--swatch)}.swatch:hover{background:var(--swatch);outline-color:var(--gb-accent)}.swatch[aria-pressed="true"]{outline:2px solid var(--gb-accent)}
+      .actions{display:flex;gap:8px;padding:12px 14px}.actions button{flex:1;font-size:12px}.actions svg{width:15px;height:15px}#hint{background:var(--gb-primary);color:var(--gb-on-primary);border-color:var(--gb-primary)}#hint:hover{background:var(--gb-primary-hover)}
       [hidden]{display:none!important}
     </style>
     <section class="card" aria-label="Gambaguette chess coach">
@@ -62,6 +70,8 @@ function mount() {
           <div class="swatches" aria-label="Arrow colour presets">
             <button class="swatch" data-color="#ffbe55" style="--swatch:#ffbe55" aria-label="Gold arrow"></button><button class="swatch" data-color="#65b9ff" style="--swatch:#65b9ff" aria-label="Blue arrow"></button><button class="swatch" data-color="#69e0a3" style="--swatch:#69e0a3" aria-label="Green arrow"></button><button class="swatch" data-color="#ed85cf" style="--swatch:#ed85cf" aria-label="Pink arrow"></button><button class="swatch" data-color="#ffffff" style="--swatch:#ffffff" aria-label="White arrow"></button>
           </div>
+          <div class="row"><label class="toggle"><input type="checkbox" id="dark-mode"><span>${icons.moon}Dark mode</span></label></div>
+          <div class="row"><label class="toggle"><input type="checkbox" id="private-overlay"><span>${icons.private}Private overlay</span></label></div>
           <div class="row"><label class="toggle"><input type="checkbox" id="auto-side"><span>${icons.scan}Auto-detect side</span></label></div>
           <div class="row"><label for="side">${icons.crown}Side</label><select id="side"><option value="both">Both sides</option><option value="w">White only</option><option value="b">Black only</option></select></div>
           <p id="side-note" class="note"></p>
@@ -109,6 +119,22 @@ function mount() {
   $('#pause').addEventListener('click', () => { prefs.enabled = !prefs.enabled; save(); });
   $('#side').addEventListener('change', () => { prefs.side = $('#side').value; prefs.autoSide = false; save(); });
   $('#auto-side').addEventListener('change', () => { prefs.autoSide = $('#auto-side').checked; save(); });
+  $('#dark-mode').addEventListener('change', async () => {
+    prefs.darkMode = $('#dark-mode').checked; syncSettings();
+    try { await chrome.storage.local.set({settings:prefs}); } catch { setStatus('Extension updated. Reload this page.'); }
+  });
+  $('#private-overlay').addEventListener('change', async () => {
+    const input=$('#private-overlay');input.disabled=true;
+    try {
+      if (input.checked) {
+        const result=await chrome.runtime.sendMessage({target:'overlay',action:'status',connect:true});
+        if (!result?.ready) {input.checked=false;setStatus('Install the Windows helper from the toolbar popup.');return;}
+      }
+      prefs.privateOverlay=input.checked;syncSettings();draw();
+      await chrome.storage.local.set({settings:prefs});
+    } catch(error) {input.checked=prefs.privateOverlay;setStatus(error.message);}
+    finally {input.disabled=false;}
+  });
   $('#time').addEventListener('change', () => { prefs.time = Number($('#time').value); save(); });
   $('#automatic').addEventListener('change', () => { prefs.automatic = $('#automatic').checked; save(); });
   $('#hint').addEventListener('click', () => { lastSearch = ''; analyze(); });
@@ -182,6 +208,18 @@ async function analyze() {
   }
 }
 function draw() {
+  if (prefs?.privateOverlay) {
+    if (svg) svg.style.display='none';
+    if (panel) panel.style.setProperty('display','none','important');
+    if (!board?.isConnected || document.visibilityState !== 'visible') return;
+    const rect=board.getBoundingClientRect();
+    chrome.runtime.sendMessage({target:'overlay',action:'frame',frame:{visible:rect.bottom > 0 && rect.top < innerHeight,
+      viewport:{width:innerWidth,height:innerHeight,dpr:devicePixelRatio},board:{left:rect.left,top:rect.top,width:rect.width,height:rect.height},
+      from:suggestion?.move.from,to:suggestion?.move.to,flipped:board.classList.contains('flipped'),color:prefs.arrowColor,darkMode:prefs.darkMode,
+      move:$('#move').textContent,detail:$('#detail').textContent,evaluation:$('#evaluation').textContent,status:$('#status').textContent}}).catch(() => {});
+    return;
+  }
+  if (panel) panel.style.removeProperty('display');
   if (!svg || !suggestion || !board?.isConnected || dragging || !prefs.enabled) {
     if (svg) svg.style.display = 'none'; return;
   }
@@ -242,12 +280,16 @@ function releaseBoard() {
 document.addEventListener('pointerup',releaseBoard,true);
 document.addEventListener('pointercancel',releaseBoard,true);
 window.addEventListener('scroll',draw,true); window.addEventListener('resize',draw);
+document.addEventListener('visibilitychange',() => {
+  if (document.visibilityState !== 'visible' && prefs?.privateOverlay) chrome.runtime.sendMessage({target:'overlay',action:'hide'}).catch(() => {});
+  else draw();
+});
 chrome.storage.onChanged.addListener((changes,area) => {
   if (area !== 'local' || !changes.settings) return;
   const next = settings(changes.settings.newValue);
   if (JSON.stringify(next) === JSON.stringify(prefs)) return;
-  const {arrowColor:oldColor,...oldAnalysis} = prefs ?? {};
-  const {arrowColor:newColor,...newAnalysis} = next;
+  const {arrowColor:oldColor,darkMode:oldTheme,privateOverlay:oldPrivate,...oldAnalysis} = prefs ?? {};
+  const {arrowColor:newColor,darkMode:newTheme,privateOverlay:newPrivate,...newAnalysis} = next;
   prefs = next; syncSettings();
   if (JSON.stringify(oldAnalysis) !== JSON.stringify(newAnalysis)) { invalidate(); syncState(); }
   else draw();

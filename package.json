@@ -1,6 +1,6 @@
 {
   "name": "gambaguette",
-  "version": "1.0.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
   "license": "GPL-3.0-only",
@@ -9,6 +9,11 @@
     "test": "node --test tests/*.test.mjs",
     "test:browser": "node tests/browser.mjs",
     "test:live": "node tests/live.mjs",
+    "test:helper": "node tests/helper.mjs",
+    "test:private": "node tests/native-browser.mjs",
+    "helper:build": "node scripts/helper.mjs build",
+    "helper:install": "node scripts/helper.mjs install",
+    "helper:remove": "node scripts/helper.mjs remove",
     "check": "npm run build && npm test && npm run test:browser"
   },
   "dependencies": {

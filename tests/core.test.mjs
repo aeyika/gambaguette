@@ -58,5 +58,7 @@ test('settings constrain search times and sanitize stored values', () => {
   assert.equal(settings(null).autoSide,true);
   assert.equal(settings({time:100}).time,100);
   assert.equal(settings().time,100);
+  assert.equal(settings({darkMode:true}).darkMode,true);
+  assert.equal(settings({darkMode:'yes'}).darkMode,false);
   assert.equal(settings({enabled:false,side:'b'}).autoSide,true,'existing installs gain automatic detection');
 });

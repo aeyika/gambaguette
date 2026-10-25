@@ -1,4 +1,6 @@
 import { supportedUrl, validFen, SEARCH_TIMES, DEFAULTS } from './core.js';
+import { installNativeOverlay } from './native-overlay.js';
+installNativeOverlay(chrome);
 let creating;
 async function ensureEngine() {
   const contexts = await chrome.runtime.getContexts({ contextTypes: ['OFFSCREEN_DOCUMENT'] });
