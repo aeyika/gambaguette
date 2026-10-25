@@ -1,0 +1,25 @@
+{
+  "name": "gambaguette",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "license": "GPL-3.0-only",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "test:browser": "node tests/browser.mjs",
+    "test:live": "node tests/live.mjs",
+    "check": "npm run build && npm test && npm run test:browser"
+  },
+  "dependencies": {
+    "chess.js": "1.4.0",
+    "stockfish": "19.0.1"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.12",
+    "lucide-react": "1.61.0",
+    "playwright": "1.56.1",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  }
+}

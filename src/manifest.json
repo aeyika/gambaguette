@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "Gambaguette",
+  "version": "1.0.0",
+  "description": "Local Stockfish suggestions on chess.com boards, with automatic player-side detection and custom arrow colours.",
+  "minimum_chrome_version": "116",
+  "permissions": ["offscreen", "storage"],
+  "background": { "service_worker": "background.js" },
+  "action": { "default_title": "Gambaguette · local chess coach", "default_popup": "popup.html" },
+  "content_scripts": [
+    { "matches": ["https://www.chess.com/*", "https://chess.com/*"], "js": ["bridge.js"], "world": "MAIN", "run_at": "document_idle" },
+    { "matches": ["https://www.chess.com/*", "https://chess.com/*"], "js": ["content.js"], "run_at": "document_idle" }
+  ],
+  "content_security_policy": { "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; connect-src 'self';" }
+}

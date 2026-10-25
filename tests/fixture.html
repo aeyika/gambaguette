@@ -1,0 +1,32 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Gambaguette board integration fixture</title>
+<style>body{margin:0;padding:48px;background:#131813;color:#eee;font:16px system-ui}wc-chess-board{position:relative;display:block;width:480px;height:480px;background:conic-gradient(#7e9561 25%,#e3dfbc 0 50%,#7e9561 0 75%,#e3dfbc 0);background-size:25% 25%}.piece{position:absolute;width:12.5%;height:12.5%;display:grid;place-items:center;font-size:36px;color:#fff;text-shadow:0 2px 3px #000}.piece[class*=" b"]{color:#222;text-shadow:0 1px #fff}</style></head>
+<body><h1>Computer practice test board</h1><wc-chess-board id="board-play-computer" class="board"></wc-chess-board><script>
+window.testFEN = '';
+window.testPlayerSide = 1;
+const params = new URLSearchParams(location.search);
+if (params.get('player') === 'black') window.testPlayerSide = 2;
+if (params.get('player') === 'unknown') window.testPlayerSide = undefined;
+window.moveCalls = 0;
+const board = document.querySelector('wc-chess-board');
+if (params.get('flip') === 'true') board.classList.add('flipped');
+board.game = {getFEN:()=>window.testFEN,getPlayingAs:()=>window.testPlayerSide,move:()=>{window.moveCalls++;throw new Error('Extension must never play a move');}};
+window.render = () => {
+  board.replaceChildren();
+  const symbols = {p:'♟',r:'♜',n:'♞',b:'♝',q:'♛',k:'♚'};
+  window.testFEN.split(' ')[0].split('/').forEach((row,index) => {
+    let file = 1;
+    for (const char of row) {
+      if (/\d/.test(char)) {file+=Number(char);continue;}
+      const piece = document.createElement('div'), rank = 8-index;
+      piece.className = `piece ${char===char.toUpperCase()?'w':'b'}${char.toLowerCase()} square-${file}${rank}`;
+      const flipped = board.classList.contains('flipped');
+      piece.style.left = `${(flipped?8-file:file-1)*12.5}%`;
+      piece.style.top = `${(flipped?rank-1:8-rank)*12.5}%`;
+      piece.textContent = symbols[char.toLowerCase()];
+      board.append(piece);file++;
+    }
+  });
+};
+window.setPosition = fen => {window.testFEN=fen;window.render();};
+setPosition('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
+</script></body></html>
